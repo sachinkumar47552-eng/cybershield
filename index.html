@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SecureCheck</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b, #020617);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e5e7eb;
+    }
+    .container { width: 100%; max-width: 860px; padding: 24px; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card {
+      background: #0b1220; border: 1px solid #1f2a44; border-radius: 14px;
+      padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,.35);
+    }
+    input[type="password"], input[type="text"] {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #22304f; background: #0a1020; color: #e5e7eb;
+    }
+    .row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    button {
+      margin-top: 10px; padding: 10px 14px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #2563eb, #22c55e); color: #fff; font-weight: 600;
+      cursor: pointer;
+    }
+    .meter { height: 8px; background: #111827; border-radius: 999px; overflow: hidden; margin-top: 8px; border: 1px solid #22304f; }
+    .meter-fill { height: 100%; width: 0%; transition: width .25s ease; }
+    .result { margin-top: 10px; font-weight: 600; line-height: 1.5; }
+    .list { margin: 6px 0 0 16px; font-weight: 500; }
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+      margin-right: 6px; background: #0b2a2f; border: 1px solid #134e4a; color: #99f6e4;
+    }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🔐 CyberShield</h1>
+      <p>Password Strength & URL Safety Analyzer</p>
+    </div>
+
+    <div class="grid">
+      <!-- Password -->
+      <div class="card">
+        <h3>Password Strength Checker</h3>
+        <input type="password" id="password" placeholder="Enter password (min 8 chars)">
+        
+        <div class="row">
+          <input type="checkbox" id="showPwd" onclick="togglePassword()">
+          <label for="showPwd">Show password</label>
+        </div>
+
+        <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+        <button onclick="checkPassword()">Check Password</button>
+        <div class="result" id="passResult"></div>
+      </div>
+
+      <!-- URL -->
+      <div class="card">
+        <h3>URL Safety Checker</h3>
+        <input type="text" id="url" placeholder="Paste full URL (https://...)">
+        <button onclick="checkURL()">Check URL</button>
+        <div class="result" id="urlResult"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+function togglePassword() {
+  const pwdInput = document.getElementById("password");
+  pwdInput.type = pwdInput.type === "password" ? "text" : "password";
+}
+
+function checkPassword() {
+  const pwd = document.getElementById("password").value || "";
+  let score = 0;
+  let suggestions = [];
+
+  if (pwd.length >= 8) score++; else suggestions.push("Use at least 8 characters");
+  if (/[A-Z]/.test(pwd)) score++; else suggestions.push("Add an uppercase letter (A–Z)");
+  if (/[a-z]/.test(pwd)) score++; else suggestions.push("Add a lowercase letter (a–z)");
+  if (/[0-9]/.test(pwd)) score++; else suggestions.push("Add a number (0–9)");
+  if (/[^A-Za-z0-9]/.test(pwd)) score++; else suggestions.push("Add a special symbol (!@#$)");
+
+  const meter = document.getElementById("meterFill");
+  let html = "";
+
+  if (pwd.length === 0) {
+    meter.style.width = "0%";
+    html = "Enter a password to analyze.";
+  } else if (score <= 2) {
+    meter.style.width = "30%";
+    meter.style.background = "#ef4444";
+    html = "❌ Weak password. Improve it:";
+  } else if (score <= 4) {
+    meter.style.width = "65%";
+    meter.style.background = "#f59e0b";
+    html = "🙂 Medium password. Make it stronger:";
+  } else {
+    meter.style.width = "100%";
+    meter.style.background = "#22c55e";
+    html = "💪 Strong password! Looks good.";
+  }
+
+  if (suggestions.length && score < 5) {
+    html += "<ul class='list'>" + suggestions.map(s => `<li>${s}</li>`).join("") + "</ul>";
+  }
+
+  document.getElementById("passResult").innerHTML = html;
+}
+
+function checkURL() {
+  const raw = document.getElementById("url").value.trim();
+
+  if (!raw) {
+    document.getElementById("urlResult").innerHTML = "Paste a URL to analyze.";
+    return;
+  }
+
+  let urlObj;
+  try {
+    urlObj = new URL(raw);
+  } catch (e) {
+    document.getElementById("urlResult").innerHTML =
+      "❌ This is NOT a valid URL.<br>👉 Example: https://example.com";
+    return;
+  }
+
+  const url = raw.toLowerCase();
+  const domain = urlObj.hostname;
+
+  let reasons = [];
+  let tags = [];
+
+  if (url.includes("bit.ly") || url.includes("tinyurl") || url.includes("t.co")) {
+    tags.push("Shortened link");
+    reasons.push("Short links hide the real destination");
+  } 
+  else if (/\d+\.\d+\.\d+\.\d+/.test(url)) {
+    tags.push("IP-based link");
+    reasons.push("Uses IP address instead of a domain name");
+  } 
+  else if (domain.includes("google.com") || domain.includes("github.com") || domain.includes("microsoft.com")) {
+    tags.push("Known website");
+  } 
+  else {
+    tags.push("Normal website");
+  }
+
+  if (!url.startsWith("https://")) {
+    reasons.push("Not using HTTPS (connection not encrypted)");
+  }
+
+  const phishingWords = ["login", "verify", "secure", "account", "update", "reset"];
+  phishingWords.forEach(w => {
+    if (url.includes(w)) reasons.push(`Contains phishing keyword: "${w}"`);
+  });
+
+  if ((url.match(/\./g) || []).length > 3) {
+    reasons.push("Too many dots (often seen in fake domains)");
+  }
+
+  let html = `<div>🌐 Domain: <b>${domain}</b></div>`;
+  html += tags.map(t => `<span class="tag">${t}</span>`).join("");
+
+  if (reasons.length) {
+    html += "<div style='margin-top:8px'>⚠️ Suspicious link. Reasons:</div>";
+    html += "<ul class='list'>" + reasons.map(r => `<li>${r}</li>`).join("") + "</ul>";
+  } else {
+    html += "<div style='margin-top:8px'>✅ Looks safe (basic checks passed).</div>";
+  }
+
+  document.getElementById("urlResult").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
